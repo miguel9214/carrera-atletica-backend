@@ -6,38 +6,35 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\StatsController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-*/
-
 // — RUTAS PÚBLICAS —
 
 // Inscripción de participantes (pública)
 Route::post('registrations', [RegistrationController::class, 'store']);
 
-// Registro/Login de administradores
-Route::post('admin/register', [AuthController::class, 'register']);
-Route::post('admin/login',    [AuthController::class, 'login']);
+// Admin: register & login (sin token)
+Route::prefix('admin')->group(function () {
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login',    [AuthController::class, 'login']);
+});
 
+// Admin: rutas protegidas por JWT
+Route::prefix('admin')
+    ->middleware('auth:api')    // o 'jwt.auth' según config
+    ->group(function () {
 
-// — RUTAS PROTEGIDAS (JWT) —
-Route::middleware('auth:api')->group(function () {
+    // Logout
+    Route::post('logout', [AuthController::class, 'logout']);
 
-    // Logout de administrador
-    Route::post('admin/logout', [AuthController::class, 'logout']);
+    // CRUD Categorías
+    Route::apiResource('categories', CategoryController::class)
+         ->except(['show']);
 
-    // CRUD de categorías
-    Route::apiResource('categories', CategoryController::class);
-
-    // Gestión de inscripciones (solo admin)
-    Route::get('registrations',        [RegistrationController::class, 'index']);
-    Route::get('registrations/{id}',   [RegistrationController::class, 'show']);
-    Route::delete('registrations/{id}',[RegistrationController::class, 'destroy']);
+    // Gestión inscripciones (index, show, destroy)
+    Route::apiResource('registrations', RegistrationController::class)
+         ->only(['index','show','destroy']);
 
     // Estadísticas y reportes
-    Route::get('stats',                 [StatsController::class, 'index']);
-    Route::get('daily-registrations',   [StatsController::class, 'dailyRegistrations']);
-    Route::get('export-registrations',  [StatsController::class, 'export']);
+    Route::get('stats',          [StatsController::class, 'index']);
+    Route::get('stats/daily',    [StatsController::class, 'dailyRegistrations']);
+    Route::get('stats/export',   [StatsController::class, 'export']);
 });
